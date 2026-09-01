@@ -523,6 +523,7 @@ penguen"></textarea>
       <button id="btnClear">🧽 Temizle</button>
       <button id="btnReveal">👀 Çözümü Göster</button>
       <button id="btnShuffle">🎲 Yeniden Karıştır</button>
+      <button id="btnFill">✨ Boşlukları Doldur</button>
       <span class="spacer"></span>
       <span class="printgroup">
         <label class="printopt"><input type="checkbox" id="printAnswers"> cevap anahtarı</label>
@@ -729,7 +730,7 @@ const LETTER_RE = /^[A-ZÇĞİÖŞÜ]+$/;
    ============================================================ */
 const K = (r,c) => r + ',' + c;
 
-function attemptBuild(userEntries, pool, target){
+function newBuilder(){
   const letters = new Map();   // key -> {ch}
   const clueCells = new Map(); // key -> [{dir, wi}]
   const placed = [];           // {answer, clue, isUser, r, c, dir, wi}
@@ -794,7 +795,7 @@ function attemptBuild(userEntries, pool, target){
     }
   }
 
-  function tryWord(entry){
+  function tryWord(entry, limitBox){
     const w = entry.answer;
     if (placed.some(p => p.answer === w)) return false;
     if (letters.size === 0){
@@ -811,7 +812,15 @@ function attemptBuild(userEntries, pool, target){
           const c = dir==='a' ? c0-i : c0;
           const cr = canPlace(w, r, c, dir);
           if (cr !== null){
-            cands.push({r, c, dir, s: cr*12 - extendCost(r,c,dir,w.length)*3 + Math.random()*2});
+            const ec = extendCost(r, c, dir, w.length);
+            if (limitBox){ // doldurma modu: sabit çerçevenin (ipucu hücresi dahil) dışına çıkma
+              const rA = r - (dir==='d'?1:0), cA = c - (dir==='a'?1:0);
+              const rB = dir==='d' ? r + w.length - 1 : r;
+              const cB = dir==='a' ? c + w.length - 1 : c;
+              if (rA < limitBox.r0 - limitBox.slack || rB > limitBox.r1 + limitBox.slack ||
+                  cA < limitBox.c0 - limitBox.slack || cB > limitBox.c1 + limitBox.slack) continue;
+            }
+            cands.push({r, c, dir, s: cr*12 - ec*3 + Math.random()*2});
           }
         }
       }
@@ -823,44 +832,36 @@ function attemptBuild(userEntries, pool, target){
     return true;
   }
 
+  return {letters, clueCells, placed, bounds, tryWord, place};
+}
+
+function attemptBuild(userEntries, pool, target){
+  const B = newBuilder();
   // 1) kullanıcı kelimeleri: uzun olan önce (hafif karıştırılmış)
   const users = [...userEntries]
     .sort((a,b) => b.answer.length - a.answer.length + (Math.random()-0.5));
   const failedUser = [];
-  for (const e of users) if (!tryWord(e)) failedUser.push(e);
+  for (const e of users) if (!B.tryWord(e)) failedUser.push(e);
   // yerleşemeyenlere bir tur daha şans ver (ızgara büyüdükçe yer açılır)
   for (let pass=0; pass<2; pass++){
     for (let i=failedUser.length-1; i>=0; i--){
-      if (tryWord(failedUser[i])) failedUser.splice(i,1);
+      if (B.tryWord(failedUser[i])) failedUser.splice(i,1);
     }
   }
-
   // 2) havuzdan tamamla
   const shuffledPool = [...pool].sort(() => Math.random()-0.5);
   for (const e of shuffledPool){
-    if (placed.length >= target) break;
-    tryWord(e);
+    if (B.placed.length >= target) break;
+    B.tryWord(e);
   }
-
-  const area = bounds.empty ? 0 : (bounds.r1-bounds.r0+1) * (bounds.c1-bounds.c0+1);
-  const userPlaced = placed.filter(p => p.isUser).length;
-  return {
-    placed, letters, clueCells, bounds, failedUser,
-    score: userPlaced*1000 + placed.length*20 - area*0.6,
-  };
+  const b = B.bounds;
+  const area = b.empty ? 0 : (b.r1-b.r0+1) * (b.c1-b.c0+1);
+  const userPlaced = B.placed.filter(p => p.isUser).length;
+  return {B, failedUser, score: userPlaced*1000 + B.placed.length*20 - area*0.6};
 }
 
-function buildPuzzle(userEntries, pool, target){
-  let best = null;
-  const tries = 30;
-  for (let t=0; t<tries; t++){
-    const a = attemptBuild(userEntries, pool, target);
-    if (!best || a.score > best.score) best = a;
-  }
-  if (!best || best.placed.length === 0) return null;
-
-  // ızgarayı diziye dök
-  const {bounds, letters, clueCells} = best;
+function finalizeBuild(B, failedUser){
+  const {bounds, letters, clueCells, placed} = B;
   const rows = bounds.r1 - bounds.r0 + 1, cols = bounds.c1 - bounds.c0 + 1;
   const grid = Array.from({length: rows}, () => Array.from({length: cols}, () => ({type:'B'})));
   for (const [k] of letters){
@@ -872,14 +873,52 @@ function buildPuzzle(userEntries, pool, target){
     slots.sort((a,b) => (a.dir==='a' ? 0 : 1) - (b.dir==='a' ? 0 : 1)); // → üstte, ↓ altta
     grid[r-bounds.r0][c-bounds.c0] = {type:'C', slots};
   }
-  for (const p of best.placed){
-    p.r -= bounds.r0; p.c -= bounds.c0;
+  const offR = -bounds.r0, offC = -bounds.c0;
+  for (const p of placed){
+    p.r += offR; p.c += offC;
     const dr = p.dir==='d'?1:0, dc = p.dir==='a'?1:0;
     for (let i=0; i<p.answer.length; i++){
       grid[p.r+dr*i][p.c+dc*i].words.push(p.wi);
     }
   }
-  return {grid, placed: best.placed, failedUser: best.failedUser, rows, cols};
+  return {grid, placed, failedUser, rows, cols, offR, offC};
+}
+
+function buildPuzzle(userEntries, pool, target){
+  let best = null;
+  for (let t=0; t<30; t++){
+    const a = attemptBuild(userEntries, pool, target);
+    if (!best || a.score > best.score) best = a;
+  }
+  if (!best || best.B.placed.length === 0) return null;
+  return finalizeBuild(best.B, best.failedUser);
+}
+
+/* mevcut bulmacayı bozmadan boşluklara havuzdan kelime sıkıştır */
+function densifyPuzzle(pz, pool){
+  const B = newBuilder();
+  for (const p of pz.placed){
+    B.place({answer: p.answer, clue: p.clue, isUser: p.isUser}, p.r, p.c, p.dir);
+  }
+  const box = {r0: B.bounds.r0, r1: B.bounds.r1, c0: B.bounds.c0, c1: B.bounds.c1, slack: 0};
+  let added = 0;
+  for (const slack of [0, 2]){ // önce sabit çerçeve içinde, sonra en fazla 2 birim payla
+    box.slack = slack;
+    let dry = 0;
+    while (dry < 2 && added < 20){
+      let round = 0;
+      for (const e of [...pool].sort(() => Math.random()-0.5)){
+        if (B.placed.some(q => q.answer === e.answer)) continue;
+        if (B.tryWord(e, box)){ round++; added++; }
+      }
+      if (round === 0) dry++; else dry = 0;
+    }
+    if (added >= 6) break; // yeterince doldu, daha fazla büyütme
+  }
+  if (!added) return null;
+  const out = finalizeBuild(B, []);
+  out.added = added;
+  return out;
 }
 
 /* ============================================================
@@ -1322,6 +1361,41 @@ $('btnReveal').addEventListener('click', () => {
 });
 
 $('btnShuffle').addEventListener('click', () => { if ($('wordsIn')) generate(); });
+
+$('btnFill').addEventListener('click', () => {
+  if (!puzzle){ showToast('Önce bir bulmaca oluştur!'); return; }
+  const used = p => !puzzle.placed.some(q => q.answer === p.answer);
+  let res = densifyPuzzle(puzzle, currentPool().filter(used));
+  if (!res){
+    // seçili tema yetmedi: tüm temalardan (seviyeye uygun) dene
+    const lvl = +$('levelSel').value;
+    const allPool = Object.values(POOLS).flat()
+      .filter(e => e.l <= lvl)
+      .map(e => ({answer: e.w, clue: e.c, isUser: false}))
+      .filter(used);
+    res = densifyPuzzle(puzzle, allPool);
+  }
+  if (!res){
+    showToast('Boşluklara sığacak yeni kelime bulunamadı — "Yeniden Karıştır" ile farklı bir diziliş deneyebilirsin. 🎲');
+    return;
+  }
+  // girilen harfleri koru (koordinatlar kayabilir: eski konum + ofset)
+  const vals = [...inputByPos.entries()].map(([k, i]) => {
+    const [r, c] = k.split(',').map(Number);
+    return [K(r + res.offR, c + res.offC), i.value];
+  });
+  puzzle = res;
+  celebrated = false;
+  renderGrid();
+  for (const [k, v] of vals){
+    const i = inputByPos.get(k);
+    if (i) i.value = v;
+  }
+  renderClueLists();
+  renderWordPanel([]);
+  setActiveWord(-1);
+  showToast('✨ Boşluklara ' + res.added + ' yeni kelime yerleştirildi!');
+});
 $('btnGen').addEventListener('click', generate);
 $('btnWinClose').addEventListener('click', () => $('winBanner').classList.remove('show'));
 
