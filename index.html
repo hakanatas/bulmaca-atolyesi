@@ -216,7 +216,8 @@
   .main{flex:1; min-width:0}
   .toolbar{display:flex; flex-wrap:wrap; gap:9px; align-items:center; margin-bottom:14px}
   .toolbar .spacer{flex:1}
-  .printopt{display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--muted)}
+  .printgroup{display:flex; align-items:center; gap:10px; flex:0 0 auto}
+  .printopt{display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--muted); white-space:nowrap}
   .printopt input{accent-color:var(--accent); width:16px; height:16px}
 
   .cluebar{
@@ -319,7 +320,7 @@
     font-family:'Nunito',sans-serif; font-weight:800; line-height:1.1;
     font-size:calc(var(--cell,48px) * .22); color:var(--muted);
   }
-  .cluelists{display:flex; gap:26px; flex-wrap:wrap; margin-top:30px; padding:0 8px}
+  .cluelists{display:flex; gap:26px; flex-wrap:wrap; margin-top:30px; padding:0 8px; align-items:flex-start}
   .cluelists .col{
     flex:1; min-width:250px; position:relative;
     border:3px solid var(--sky); border-radius:20px; background:var(--card);
@@ -521,8 +522,10 @@ penguen"></textarea>
       <button id="btnReveal">👀 Çözümü Göster</button>
       <button id="btnShuffle">🎲 Yeniden Karıştır</button>
       <span class="spacer"></span>
-      <label class="printopt"><input type="checkbox" id="printAnswers"> cevap anahtarı</label>
-      <button id="btnPrint">🖨️ Yazdır / PDF</button>
+      <span class="printgroup">
+        <label class="printopt"><input type="checkbox" id="printAnswers"> cevap anahtarı</label>
+        <button id="btnPrint">🖨️ Yazdır / PDF</button>
+      </span>
     </div>
 
     <div class="cluebar idle" id="clueBar">Bir kutuya ya da ipucu hücresine tıkla — ipucu burada büyük yazsın! 👇</div>
