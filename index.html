@@ -109,9 +109,10 @@
     font-family:'Nunito', 'Trebuchet MS', system-ui, sans-serif;
     font-size:16px;
     min-height:100vh;
+    display:flex; flex-direction:column; /* alt bilgi her zaman pencerenin dibinde */
   }
 
-  .wrap{display:flex; gap:22px; padding:10px 22px 26px; max-width:1400px; margin:0 auto; align-items:flex-start}
+  .wrap{display:flex; gap:22px; padding:10px 22px 26px; max-width:1400px; margin:0 auto; align-items:flex-start; width:100%; flex:1 0 auto}
   @media (max-width: 900px){ .wrap{flex-direction:column} .sidebar{width:100% !important; position:static !important} }
 
   /* ---------- hero ---------- */
@@ -348,8 +349,9 @@
 
   /* ---------- ALKEV alt bilgisi ---------- */
   .sitefoot{
-    max-width:1400px; margin:0 auto; padding:4px 22px 34px;
+    width:100%; margin-top:auto; padding:26px 22px 30px;
     display:flex; gap:18px; align-items:center; justify-content:center;
+    background:linear-gradient(rgba(69,174,232,0), rgba(69,174,232,.16));
   }
   .footcard{
     background:var(--card); border:3px solid var(--sky); border-radius:22px;
@@ -403,7 +405,7 @@
       --ok-bg:#fff; --bad-bg:#fff; --ok-ink:#1a2340; --bad-ink:#1a2340;
       --grass:#69b94f; --sky:#3fa0dc; --sky-soft:#cde9fb; --card:#fff;
     }
-    body{background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+    body{background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; display:block; min-height:0}
     :root, :root[data-theme="dark"]{--cell-line:#1a2340}
     .sidebar, .toolbar, .cluebar, .toast, .banner, #confettiCv, .hero, .tape, .sitefoot{display:none !important}
     .printhead{position:relative}
