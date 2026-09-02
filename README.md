@@ -12,6 +12,7 @@ Bu web sitesi, **ALKEV Özel Okulları Bilişim ve Türkçe bölümlerinin** iş
 - 🎮 Ekranda çözme: kontrol, çözümü gösterme, konfetili kutlama
 - 🖨️ Yazıcı dostu tek sayfa A4 çıktı — boş ya da cevap anahtarlı, PDF olarak kaydedilebilir
 - 🌗 Aydınlık / karanlık tema desteği
+- 💾 Bulmacaları tarayıcıda kaydetme (kitaplık) ve 🔗 tek bağlantıyla paylaşma — bağlantıyı açan öğrenci birebir aynı bulmacayı **öğrenci modunda** çözer (üretici araçları gizli, istenirse "Çözümü Göster" de gizli); girdiği harfler aynı cihazda saklanır
 
 ## Kullanım
 
